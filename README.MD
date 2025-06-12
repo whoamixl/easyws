@@ -1,162 +1,38 @@
-Here's a `README.md` for your `easyws` package, focusing on usage and callback explanations:
+-----
 
----
+# EasyWS: Your Go-to for Effortless WebSocket Servers 🚀
 
-# easyws: A Simple and Easy-to-Use WebSocket Library for Go
+Building robust and scalable WebSocket applications in Go just got a whole lot easier\! **EasyWS** is a lightweight, opinionated, and highly extensible library designed to abstract away the complexities of WebSocket handling, letting you focus on your application logic.
 
-`easyws` is a Go package that provides a straightforward and flexible way to build WebSocket servers. It handles common WebSocket patterns like client management, message broadcasting, and event-driven callbacks, allowing you to focus on your application logic.
+Whether you're crafting real-time chat applications, live dashboards, or interactive games, EasyWS provides the foundational pieces you need: client management, message broadcasting, and a flexible event-driven architecture.
 
-## Features
+-----
 
-* **Simple Client & Hub Architecture:** Easily manage connected WebSocket clients through a central Hub.
-* **Message Broadcasting:** Broadcast messages to all connected clients.
-* **Individual Client Messaging:** Send messages to specific clients by their ID.
-* **Event-Driven Callbacks:** Define custom logic for connection, disconnection, message reception, and authentication events.
-* **Built-in Authentication Flow:** Supports an optional authentication step for new connections.
-* **Configurable WebSocket Upgrader:** Customize `CheckOrigin` and other `websocket.Upgrader` options.
-* **Heartbeat (Ping/Pong):** Automatic ping/pong handling to keep connections alive.
+## ✨ Why EasyWS?
 
-## Installation
+* **Simplicity:** Get a WebSocket server up and running with just a few lines of code.
+* **Flexibility:** Easily plug in custom logic for connection, disconnection, message handling, and even authentication.
+* **Concurrency-Safe:** Built with Go's concurrency primitives (`sync.RWMutex`, channels) to ensure thread-safe operations.
+* **Scalable:** Designed to efficiently manage numerous client connections and message broadcasting.
+* **Customizable:** Take control of client ID generation, cross-origin checks, and integrate with existing HTTP routers.
+
+-----
+
+## 📦 Installation
+
+Getting started is as simple as:
 
 ```bash
-go get github.com/whoamixl/easyws 
+go get github.com/whoamixl/easyws
 ```
 
-## Usage
+EasyWS relies on `github.com/gorilla/websocket`, which will be fetched automatically when you run `go mod tidy` after importing `easyws`.
 
-### 1. Basic Server Setup
+-----
 
-Here's a minimal example to get an `easyws` server up and running:
+## 🚀 Quick Start & Demo
 
-```go
-package main
-
-import (
-	"log"
-	"net/http"
-
-	"github.com/whoamixl/easyws" 
-)
-
-func main() {
-	server := easyws.NewWebSocketServer()
-
-	// Optional: Set custom callback functions
-	server.Hub.OnConnect = func(client *easyws.Client) error {
-		log.Printf("Client %s connected!", client.ID)
-		client.SendText("Welcome to the easyws server!")
-		return nil
-	}
-
-	server.Hub.OnDisconnect = func(client *easyws.Client, err error) {
-		if err != nil {
-			log.Printf("Client %s disconnected with error: %v", client.ID, err)
-		} else {
-			log.Printf("Client %s disconnected.", client.ID)
-		}
-	}
-
-	server.Hub.OnMessage = func(client *easyws.Client, messageType int, data []byte) error {
-		log.Printf("Received message from %s: %s", client.ID, string(data))
-		// Echo the message back
-		return client.SendText("You said: " + string(data))
-	}
-
-	// Start the server
-	log.Fatal(server.Start(":8080"))
-}
-```
-
-You can then connect to `ws://localhost:8080/ws` using a WebSocket client (e.g., a browser's JavaScript `WebSocket` API, or a tool like Postman/Insomnia).
-
-### 2. Using Custom HTTP Mux
-
-If you're already using a custom `http.ServeMux` for your application, you can integrate `easyws` with it:
-
-```go
-package main
-
-import (
-	"log"
-	"net/http"
-
-	"github.com/whoamixl/easyws" // 
-)
-
-func main() {
-	server := easyws.NewWebSocketServer()
-	mux := http.NewServeMux()
-
-	// Your other HTTP routes
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello from HTTP server!"))
-	})
-
-	// Register the WebSocket handler
-	log.Fatal(server.StartWithMux(":8080", mux))
-}
-```
-
-### 3. Authentication
-
-The `easyws` package provides an `OnAuth` callback for handling client authentication. If `OnAuth` is set, a client's messages will only be processed by `OnMessage` *after* successful authentication.
-
-```go
-package main
-
-import (
-	"encoding/json"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/whoamixl/easyws"
-)
-
-type AuthMessage struct {
-	Token string `json:"token"`
-}
-
-func main() {
-	server := easyws.NewWebSocketServer()
-
-	// Authentication Callback
-	server.Hub.OnAuth = func(client *easyws.Client, messageType int, data []byte) (bool, error) {
-		var authMsg AuthMessage
-		if err := json.Unmarshal(data, &authMsg); err != nil {
-			log.Printf("Auth error: Invalid JSON - %v", err)
-			return false, nil // Authentication failed due to bad format
-		}
-
-		// Simulate a token validation
-		if authMsg.Token == "mysecrettoken123" {
-			client.SetUserData("username", "authenticated_user")
-			client.SendText("Authentication successful!")
-			log.Printf("Client %s authenticated.", client.ID)
-			return true, nil // Authentication successful
-		}
-
-		client.SendText("Authentication failed: Invalid token.")
-		log.Printf("Client %s authentication failed (invalid token).", client.ID)
-		return false, nil // Authentication failed
-	}
-
-	// Message Callback (only called for authenticated clients if OnAuth is set)
-	server.Hub.OnMessage = func(client *easyws.Client, messageType int, data []byte) error {
-		username, _ := client.GetUserData("username")
-		log.Printf("Authenticated client %s (%v) sent: %s", client.ID, username, string(data))
-		return client.SendText(fmt.Sprintf("Hello %v, you said: %s", username, string(data)))
-	}
-
-	log.Fatal(server.Start(":8080"))
-}
-```
-
-With the above `OnAuth` setup, a client would typically send an initial JSON message like `{"token": "mysecrettoken123"}` after connecting to authenticate.
-
-### 4. Broadcasting Messages
-
-You can broadcast messages to all connected clients or send messages to specific clients:
+Let's build a simple echo server that authenticates clients and broadcasts all messages to everyone\!
 
 ```go
 package main
@@ -167,135 +43,205 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/whoamixl/easyws"
+	"github.com/whoamixl/easyws" // Your library's import path
 )
 
 func main() {
+	// Create a new WebSocket server instance
 	server := easyws.NewWebSocketServer()
 
+	// Configure Hub callbacks – this is where your application logic goes!
 	server.Hub.OnConnect = func(client *easyws.Client) error {
-		log.Printf("Client %s connected. Total clients: %d", client.ID, server.Hub.GetClientCount())
-		server.Hub.BroadcastText(fmt.Sprintf("A new client %s has joined!", client.ID))
-		return nil
+		log.Printf("New client connected: %s", client.ID)
+		// Send a welcome message to the newly connected client
+		client.SendText("Welcome to the EasyWS echo server! Please send 'AUTH <your_secret_key>' to authenticate.")
+		return nil // Return nil if connection should proceed
+	}
+
+	server.Hub.OnDisconnect = func(client *easyws.Client, err error) {
+		if err != nil {
+			log.Printf("Client %s disconnected with error: %v", client.ID, err)
+		} else {
+			log.Printf("Client %s disconnected cleanly.", client.ID)
+		}
+		// You can notify other clients here that someone disconnected
 	}
 
 	server.Hub.OnMessage = func(client *easyws.Client, messageType int, data []byte) error {
 		msg := string(data)
-		log.Printf("Received from %s: %s", client.ID, msg)
+		log.Printf("Received message from %s: %s (Type: %d)", client.ID, msg, messageType)
 
-		// Example: Send a private message to a specific client
-		if msg == "send private" {
-			targetID := "some_other_client_id" // You'd get this from your application logic
-			if err := server.Hub.SendTextToClient(targetID, "This is a private message for you!"); err != nil {
-				log.Printf("Error sending private message: %v", err)
-			}
+		// Echo the message back to the sender
+		client.SendText("You said: " + msg)
+
+		// Broadcast the message to all other *authenticated* clients
+		// Note: The authentication check happens *before* OnMessage if OnAuth is set.
+		// We still check here for clarity of what's being broadcast.
+		if client.GetAuth() {
+			server.Hub.BroadcastText(fmt.Sprintf("Client %s (authenticated) says: %s", client.ID, msg))
 		} else {
-			// Broadcast all other messages
-			server.Hub.BroadcastText(fmt.Sprintf("%s says: %s", client.ID, msg))
+			client.SendText("Please authenticate first to participate in broadcast!")
 		}
-		return nil
+		return nil // Return nil if message was processed successfully
 	}
 
-	go func() {
-		// Example of broadcasting from outside the Hub's Run loop
-		for {
-			time.Sleep(5 * time.Second)
-			server.Hub.BroadcastText(fmt.Sprintf("Server broadcast at %s", time.Now().Format(time.RFC3339)))
+	// Implement a simple authentication mechanism
+	server.Hub.OnAuth = func(client *easyws.Client, messageType int, data []byte) (bool, error) {
+		authMsg := string(data)
+		log.Printf("Client %s attempting to authenticate with: %s", client.ID, authMsg)
+
+		// Simple secret key authentication
+		if authMsg == "AUTH mysecretkey123" {
+			client.SendText("Authentication successful!")
+			log.Printf("Client %s authenticated successfully.", client.ID)
+			return true, nil // Return true for successful authentication
 		}
-	}()
+		client.SendText("Authentication failed! Please send 'AUTH <your_secret_key>'")
+		log.Printf("Client %s authentication failed.", client.ID)
+		return false, nil // Return false if authentication fails
+	}
 
-	log.Fatal(server.Start(":8080"))
-}
-```
+	// --- Advanced Customization (Optional) ---
 
-## Callbacks Explained
-
-The `Hub` struct exposes several callback functions that you can set to define your application's behavior for different WebSocket events.
-
-* `OnConnect func(client *Client) error`
-    * **Triggered:** When a new WebSocket client successfully connects and is registered with the Hub.
-    * **Parameters:**
-        * `client *easyws.Client`: The newly connected client.
-    * **Return:** An `error`. If you return a non-nil error, the client connection will be immediately closed. This is useful for denying connections based on initial checks (e.g., request headers, query parameters).
-
-* `OnDisconnect func(client *Client, err error)`
-    * **Triggered:** When a client disconnects from the WebSocket server. This can happen due to the client closing the connection, a network error, or the server explicitly closing the connection.
-    * **Parameters:**
-        * `client *easyws.Client`: The client that disconnected.
-        * `err error`: The error that caused the disconnection, if any. This will be `nil` if the disconnection was graceful (e.g., client closed the connection normally).
-
-* `OnMessage func(client *Client, messageType int, data []byte) error`
-    * **Triggered:** When a message is received from a connected client.
-    * **Parameters:**
-        * `client *easyws.Client`: The client from whom the message was received.
-        * `messageType int`: The WebSocket message type (e.g., `websocket.TextMessage`, `websocket.BinaryMessage`).
-        * `data []byte`: The raw message data.
-    * **Return:** An `error`. If you return a non-nil error, it will be logged, but the client connection will remain open unless a critical WebSocket error occurs.
-
-* `OnAuth func(client *Client, messageType int, data []byte) (bool, error)`
-    * **Triggered:** (Optional) If set, this callback is triggered for the *first message* received from a client that has not yet been authenticated (`client.IsAuth` is `false`).
-    * **Parameters:** Same as `OnMessage`.
-    * **Return:**
-        * `bool`: `true` if authentication is successful, `false` otherwise.
-        * `error`: An error if an issue occurred during the authentication *attempt* (e.g., parsing the authentication message).
-    * **Behavior:**
-        * If `OnAuth` returns `true` for authentication status, the client's `IsAuth` flag is set to `true`, and subsequent messages from this client will trigger `OnMessage`.
-        * If `OnAuth` returns `false` for authentication status (or a non-nil error), the client's connection will be closed.
-        * If `OnAuth` is set, and a client is not authenticated, any messages received from that client *before* successful authentication will only go through `OnAuth` and *not* `OnMessage`.
-
-## Client Management
-
-The `Hub` provides methods for managing and interacting with connected clients:
-
-* `hub.GetClient(id string) (*Client, bool)`: Retrieves a client by its ID.
-* `hub.GetAllClients() map[string]*Client`: Returns a copy of all connected clients.
-* `hub.GetClientCount() int`: Returns the current number of connected clients.
-* `hub.Broadcast(data []byte)`: Sends binary data to all connected clients.
-* `hub.BroadcastText(text string)`: Sends a text string to all connected clients.
-* `hub.SendToClient(clientID string, data []byte) error`: Sends binary data to a specific client.
-* `hub.SendTextToClient(clientID string, text string) error`: Sends a text string to a specific client.
-
-## Client Information and Actions
-
-Each `Client` object provides methods to manage its state and send messages:
-
-* `client.ID string`: The unique identifier for the client.
-* `client.IsAuth bool`: Current authentication status of the client (managed by `SetAuth` and `OnAuth`).
-* `client.UserData map[string]interface{}`: A thread-safe map to store custom data associated with the client.
-    * `client.SetUserData(key string, value interface{})`: Sets a key-value pair in `UserData`.
-    * `client.GetUserData(key string) (interface{}, bool)`: Retrieves a value from `UserData`.
-* `client.SendMessage(data []byte) error`: Sends binary data to this specific client.
-* `client.SendText(text string) error`: Sends a text string to this specific client.
-* `client.SetAuth(isAuth bool)`: Manually sets the authentication status of the client.
-* `client.GetAuth() bool`: Gets the current authentication status.
-* `client.Close()`: Closes the client's WebSocket connection.
-
-## Customizing WebSocket Upgrader
-
-You can configure the `websocket.Upgrader` used by `easyws`, for example, to set your own `CheckOrigin` function for security:
-
-```go
-package main
-
-import (
-	"log"
-	"net/http"
-	"strings"
-
-	"github.com/whoamixl/easyws"
-)
-
-func main() {
-	server := easyws.NewWebSocketServer()
-
-	// Allow connections only from specific origins
-	server.SetCheckOrigin(func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		return strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "https://your-domain.com")
+	// Customize client ID generation (e.g., from a URL query parameter)
+	server.SetGenerateClientID(func(r *http.Request) string {
+		if id := r.URL.Query().Get("user_id"); id != "" {
+			return "user_" + id
+		}
+		// Fallback to a timestamp-based ID if no user_id is provided
+		return fmt.Sprintf("guest_%d", time.Now().UnixNano())
 	})
 
-	log.Fatal(server.Start(":8080"))
+	// Set custom CORS check (e.g., allow specific origins for security)
+	server.SetCheckOrigin(func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		// Allow requests from specific origins
+		return origin == "http://localhost:3000" || origin == "https://your-frontend-domain.com"
+		// For local development, `return true` is often used, but be cautious in production.
+	})
+
+	// Start the server with default options (:8080/ws)
+	log.Println("Starting EasyWS server on :8080/ws")
+	if err := server.StartWithDefaults(); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }
 ```
 
----
+To run this demo:
+
+1.  Save the code as `main.go` in your project.
+
+2.  Make sure you have your `go.mod` file correctly set up.
+
+3.  Run `go mod tidy` to ensure all dependencies are fetched.
+
+4.  Execute `go run main.go` from your terminal.
+
+5.  Open your browser's developer console and connect using JavaScript, or use a WebSocket client tool:
+
+    ```javascript
+    const ws = new WebSocket("ws://localhost:8080/ws?user_id=johndoe");
+
+    ws.onopen = () => {
+        console.log("Connected to WebSocket server!");
+        ws.send("Hello there!"); // This won't be processed by OnMessage until authenticated
+        setTimeout(() => {
+            ws.send("AUTH mysecretkey123"); // Authenticate after a short delay
+        }, 1000);
+    };
+
+    ws.onmessage = (event) => {
+        console.log("Received message:", event.data);
+    };
+
+    ws.onclose = () => {
+        console.log("Disconnected from WebSocket server.");
+    };
+
+    ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+    ```
+
+-----
+
+## 🛠️ Core Components
+
+EasyWS is built around a few key abstractions that make managing WebSockets intuitive:
+
+### `Hub`
+
+The **`Hub`** is the central orchestrator of your WebSocket application. It's responsible for managing all connected clients, handling their registration and unregistration, and facilitating message broadcasting. You'll primarily interact with the `Hub` by setting its powerful event-driven callback functions.
+
+* **`NewHub()`**: Creates and returns a new `Hub` instance.
+* **`Run()`**: Starts the Hub's internal message processing loop. This function typically runs indefinitely in its own goroutine to handle client events.
+* **`OnConnect(client *Client) error`**:
+    * **Description**: Invoked immediately after a new client successfully establishes a WebSocket connection.
+    * **Use Case**: Initializing client-specific data, sending a welcome message, or logging the connection. Returning an `error` from this callback will close the connection.
+* **`OnDisconnect(client *Client, err error)`**:
+    * **Description**: Called when a client's connection is closed, either gracefully by the client or due to a network error.
+    * **Use Case**: Cleaning up client-related resources, logging disconnections, or notifying other clients.
+* **`OnMessage(client *Client, messageType int, data []byte) error`**:
+    * **Description**: Executed when a client sends a message to the server. For unauthenticated clients, this is only called *after* `OnAuth` (if configured) has successfully authenticated them.
+    * **Use Case**: Processing incoming commands, handling chat messages, or implementing your application's core logic.
+* **`OnAuth(client *Client, messageType int, data []byte) (bool, error)`**:
+    * **Description**: (Optional) If set, this callback is the *first* to process any incoming message from an **unauthenticated** client. Messages from authenticated clients bypass this.
+    * **Use Case**: Implementing custom authentication logic (e.g., validating API keys, session tokens, or username/password handshakes). Return `true` if authentication is successful; `false` will cause the client to be disconnected.
+* **`GetClient(id string) (*Client, bool)`**: Safely retrieves a `Client` instance by its unique ID.
+* **`GetAllClients() map[string]*Client`**: Returns a thread-safe copy of all currently connected clients.
+* **`GetClientCount() int`**: Returns the current number of active client connections.
+* **`Broadcast(data []byte)` / `BroadcastText(text string)`**: Sends a raw byte slice or a string message to *all* currently connected clients.
+* **`SendToClient(clientID string, data []byte) error` / `SendTextToClient(clientID string, text string) error`**: Sends a message to a *specific* client identified by its `clientID`.
+
+### `Client`
+
+Each **`Client`** object represents an individual, active WebSocket connection. It encapsulates the underlying `*websocket.Conn` and provides convenient methods for interacting with that specific client.
+
+* **`ID string`**: A unique identifier assigned to the client. This can be customized (see `SetGenerateClientID`).
+* **`Conn *websocket.Conn`**: The underlying Gorilla WebSocket connection object.
+* **`Hub *Hub`**: A pointer back to the `Hub` managing this client.
+* **`Send chan []byte`**: An internal channel used to queue messages to be sent *to* this client.
+* **`IsAuth bool`**: A flag indicating whether the client has been authenticated.
+* **`UserData map[string]interface{}`**: A flexible, thread-safe map where you can store any custom data pertinent to this client's session (e.g., user ID, permissions, chat room).
+* **`SendMessage(data []byte) error` / `SendText(text string) error`**: Queues a raw byte slice or a string message to be sent to this client. Returns an error if the send channel is full or the client is closed.
+* **`SetUserData(key string, value interface{})` / `GetUserData(key string) (interface{}, bool)`**: Safely manipulate the `UserData` map using read/write mutexes.
+* **`SetAuth(isAuth bool)` / `GetAuth() bool`**: Safely update and retrieve the client's authentication status.
+* **`Close()`**: Initiates the graceful shutdown of the client's connection and associated goroutines.
+
+### `WebSocketServer`
+
+The **`WebSocketServer`** is your entry point for setting up and running the WebSocket listener within your HTTP server. It handles the initial HTTP upgrade request to a WebSocket connection.
+
+* **`NewWebSocketServer()`**: Creates and returns a new `WebSocketServer` instance, including a default `Hub`.
+* **`SetCheckOrigin(checkOrigin func(r *http.Request) bool)`**: Allows you to override the default `CheckOrigin` function used by `gorilla/websocket`. This is crucial for controlling Cross-Origin Resource Sharing (CORS) in production environments.
+* **`SetGenerateClientID(generateClientID func(r *http.Request) string)`**: Provides a powerful hook to define your own logic for how client IDs are generated (e.g., extracting from URL parameters, HTTP headers, or using a UUID generator).
+* **`StartWithDefaults() error`**: A convenient helper to start the server on the default address `":8080"` and WebSocket path prefix `"/ws"`.
+* **`Start(addr string) error`**: Starts the server on a specified network address, using the default prefix `"/ws"`.
+* **`StartWithOption(option *Option) error`**: Offers the most comprehensive way to start the server, allowing full control over address, prefix, and the ability to integrate with a custom `http.ServeMux`.
+* **`StartWithMux(addr string, prefix string, mux *http.ServeMux) error`**: Seamlessly integrates EasyWS into an existing HTTP server by registering its WebSocket handler with your custom `http.ServeMux`.
+
+### `Option`
+
+The **`Option`** struct bundles configuration parameters for starting the `WebSocketServer`, offering flexibility beyond the defaults.
+
+* **`Addr string`**: The network address for the server to listen on (e.g., `":8080"`, `"localhost:9000"`).
+* **`Prefix string`**: The URL path prefix where WebSocket connections will be accepted (e.g., `"/ws"`, `"/chat"`).
+* **`OverWriteClient bool`**: A boolean flag (currently not actively used in the core client management logic but available for future features or custom implementations where client ID collisions need specific handling).
+* **`mux *http.ServeMux`**: An optional custom `http.ServeMux` instance. If provided, the WebSocket handler will be registered with this mux instead of Go's default `http.DefaultServeMux`.
+
+-----
+
+## 🤝 Contributing
+
+We welcome contributions\! If you have ideas for new features, bug fixes, or improvements, please feel free to open an [issue](https://www.google.com/search?q=https://github.com/whoamixl/easyws/issues) or submit a [pull request](https://www.google.com/search?q=https://github.com/whoamixl/easyws/pulls).
+
+-----
+
+## 📄 License
+
+EasyWS is open-source software licensed under the MIT License. See the [LICENSE](https://www.google.com/search?q=https://github.com/whoamixl/easyws/blob/main/LICENSE) file for more details.
+
+-----
+
+I've put a lot of detail into explaining each component and providing a clear, runnable example. Does this README capture everything you were looking for and make you excited to share EasyWS?
