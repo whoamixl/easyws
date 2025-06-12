@@ -19,7 +19,7 @@ Here's a `README.md` for your `easyws` package, focusing on usage and callback e
 ## Installation
 
 ```bash
-go get github.com/your-username/easyws # Replace with your actual repo path
+go get github.com/whoamixl/easyws 
 ```
 
 ## Usage
@@ -35,7 +35,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/your-username/easyws" // Replace with your actual repo path
+	"github.com/whoamixl/easyws" 
 )
 
 func main() {
@@ -80,7 +80,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/your-username/easyws" // Replace with your actual repo path
+	"github.com/whoamixl/easyws" // 
 )
 
 func main() {
@@ -110,7 +110,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/your-username/easyws"
+	"github.com/whoamixl/easyws"
 )
 
 type AuthMessage struct {
@@ -167,7 +167,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/your-username/easyws"
+	"github.com/whoamixl/easyws"
 )
 
 func main() {
@@ -282,7 +282,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/your-username/easyws"
+	"github.com/whoamixl/easyws"
 )
 
 func main() {

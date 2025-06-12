@@ -1,4 +1,4 @@
-module easyws
+module github.com/whoamixl/easyws
 
 go 1.24.1
 
