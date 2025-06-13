@@ -227,7 +227,7 @@ The **`Option`** struct bundles configuration parameters for starting the `WebSo
 
 * **`Addr string`**: The network address for the server to listen on (e.g., `":8080"`, `"localhost:9000"`).
 * **`Prefix string`**: The URL path prefix where WebSocket connections will be accepted (e.g., `"/ws"`, `"/chat"`).
-* **`OverWriteClient bool`**: A boolean flag (currently not actively used in the core client management logic but available for future features or custom implementations where client ID collisions need specific handling).
+* **`OverWriteClient bool`**: The Boolean flag can be used to determine whether the client needs to be overwritten when there is a conflict with the client ID.
 * **`mux *http.ServeMux`**: An optional custom `http.ServeMux` instance. If provided, the WebSocket handler will be registered with this mux instead of Go's default `http.DefaultServeMux`.
 
 -----
