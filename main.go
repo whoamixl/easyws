@@ -34,11 +34,12 @@ type Client struct {
 
 // Hub manages WebSocket clients, including registration, unregistration, and broadcasting.
 type Hub struct {
-	clients    map[string]*Client // Registered clients
-	register   chan *Client       // Channel for client registration requests
-	unregister chan *Client       // Channel for client unregistration requests
-	broadcast  chan []byte        // Channel for broadcasting messages to all clients
-	mutex      sync.RWMutex       // Mutex to protect the clients map
+	clients         map[string]*Client // Registered clients
+	register        chan *Client       // Channel for client registration requests
+	unregister      chan *Client       // Channel for client unregistration requests
+	broadcast       chan []byte        // Channel for broadcasting messages to all clients
+	mutex           sync.RWMutex       // Mutex to protect the clients map
+	overWriteClient bool               // Overwrite client connection
 
 	// Callback functions for various client events.
 	OnConnect    func(client *Client) error                                       // Called when a new client connects
@@ -64,12 +65,17 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			// Register new client
 			h.mutex.Lock()
-			if _, ok := h.clients[client.ID]; ok {
-				log.Printf("clinet %s is already registered", client.ID) // Client %s already registered
+			if !h.overWriteClient {
+				if _, ok := h.clients[client.ID]; ok {
+					log.Printf("clinet %s is already registered", client.ID) // Client %s already registered
+					continue
+				} else {
+					h.clients[client.ID] = client
+				}
+			} else {
+				h.clients[client.ID] = client
 			}
-			h.clients[client.ID] = client
 			h.mutex.Unlock()
-
 			log.Printf("clinet %s is connected", client.ID) // Client %s connected
 
 			// Trigger OnConnect callback
@@ -433,17 +439,18 @@ func (s *WebSocketServer) generateClientID(r *http.Request) string {
 
 // StartWithDefaults starts the WebSocket server with default configuration.
 func (s *WebSocketServer) StartWithDefaults() error {
-	return s.StartWithOption(&Option{Addr: ":8080", Prefix: "/ws", OverWriteClient: true})
+	return s.StartWithOption(&Option{Addr: ":8080", Prefix: "/ws", OverWriteClient: false})
 }
 
 // Start starts the WebSocket server on the specified address with default prefix and client overwrite.
 func (s *WebSocketServer) Start(addr string) error {
-	option := Option{Addr: addr, Prefix: "/ws", OverWriteClient: true}
+	option := Option{Addr: addr, Prefix: "/ws", OverWriteClient: false}
 	return s.StartWithOption(&option)
 }
 
 // StartWithOption starts the WebSocket server using the provided Option.
 func (s *WebSocketServer) StartWithOption(option *Option) error {
+	s.Hub.overWriteClient = option.OverWriteClient
 	go s.Hub.Run() // Start the Hub's main loop
 
 	// Ensure prefix starts with '/', default to "/ws" if empty.
